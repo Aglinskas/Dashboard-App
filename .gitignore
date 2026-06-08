@@ -1,0 +1,21 @@
+# OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+
+# Python files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+env/
+ENV/
+
+# User activity data (local logs and exports)
+Data/*.json
+Data/*.csv
+Data/data_timeline/
+Data/old/

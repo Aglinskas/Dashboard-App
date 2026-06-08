@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aidas' Productivity Dashboard</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar or Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <span class="logo-glow"></span>
+                <h1 class="logo-text">Aglinskas</h1>
+                <span class="logo-subtext">QUANTIFIED SELF</span>
+            </div>
+            <div class="header-right">
+                <div class="current-date-display" id="active-date-title">June 5, 2026</div>
+                <div class="capture-container">
+                    <button id="capture-btn" class="capture-button-new">
+                        <span class="capture-icon">📸</span>
+                        <span class="capture-text">Capture Dashboard</span>
+                    </button>
+                </div>
+                <div class="refresh-container">
+                    <button id="refresh-btn" class="pulse-indicator refresh-button-new">
+                        <span class="pulse-dot"></span>
+                        <span class="pulse-text refresh-text">Refresh Data</span>
+                    </button>
+                    <div class="refresh-dropdown" id="refresh-dropdown-menu">
+                        <div id="refresh-config-view">
+                            <div class="dropdown-header">REFRESH SOURCES</div>
+                            <label class="dropdown-item">
+                                <input type="checkbox" id="refresh-computer" checked>
+                                <span>Computer Use</span>
+                            </label>
+                            <label class="dropdown-item">
+                                <input type="checkbox" id="refresh-iphone" checked>
+                                <span>iPhone Data</span>
+                            </label>
+                            <button id="refresh-now-btn" class="refresh-now-button">Refresh Now</button>
+                        </div>
+                        <div id="refresh-progress-view" style="display: none;">
+                            <div class="dropdown-header">REFRESHING...</div>
+                            <div class="progress-steps-list" id="progress-steps-list">
+                                <!-- Dynamically populated steps -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Calendar Timeline Strip (Day Selector) -->
+        <section class="calendar-strip-container">
+            <div class="strip-header">
+                <h3>DAILY ACTIVITY CALENDAR</h3>
+                <span class="strip-instruction">Select a day to inspect activity</span>
+            </div>
+            <div class="calendar-strip" id="calendar-strip">
+                <!-- JavaScript will populate active days here with mini activity bars -->
+                <div class="calendar-loading">Loading calendar strip...</div>
+            </div>
+        </section>
+
+        <!-- Main Dashboard View -->
+        <main class="dashboard-content" id="dashboard-view" style="display: none;">
+            
+            <!-- Hero Stats: Progress Ring and Main Numbers -->
+            <section class="hero-section">
+                <!-- Hero Stat Card: Circular Progress -->
+                <div class="card glass hero-progress-card">
+                    <div class="progress-ring-container">
+                        <svg class="progress-ring" width="220" height="220">
+                            <defs>
+                                <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#a78bfa" /> <!-- Violet -->
+                                    <stop offset="50%" stop-color="#22d3ee" /> <!-- Cyan -->
+                                    <stop offset="100%" stop-color="#34d399" /> <!-- Emerald -->
+                                </linearGradient>
+                            </defs>
+                            <circle class="progress-ring-bg" stroke="#1c1c2b" stroke-width="12" fill="transparent" r="95" cx="110" cy="110"/>
+                            <circle class="progress-ring-fill" id="progress-ring-circle" stroke="url(#ringGradient)" stroke-width="12" stroke-linecap="round" fill="transparent" r="95" cx="110" cy="110" stroke-dasharray="596.9" stroke-dashoffset="596.9"/>
+                        </svg>
+                        <div class="progress-text-center">
+                            <span class="active-time-value" id="stat-active-time">0h 0m</span>
+                            <span class="active-time-label">Active Time</span>
+                        </div>
+                    </div>
+                    <div class="hero-goal-status">
+                        <span class="goal-percentage" id="stat-goal-percent">0%</span>
+                        <span class="goal-text">of 8h daily goal achieved</span>
+                    </div>
+                </div>
+
+                <!-- Hero Grid Stats -->
+                <div class="hero-stats-grid">
+                    <div class="card glass stat-mini-card">
+                        <div class="stat-icon icon-purple">⚡</div>
+                        <div class="stat-info">
+                            <span class="stat-title">Focus Events</span>
+                            <span class="stat-number" id="stat-events-count">0</span>
+                            <span class="stat-desc">Captured logs today</span>
+                        </div>
+                    </div>
+                    <div class="card glass stat-mini-card">
+                        <div class="stat-icon icon-cyan">💻</div>
+                        <div class="stat-info">
+                            <span class="stat-title">Top Category</span>
+                            <span class="stat-number" id="stat-top-category">N/A</span>
+                            <span class="stat-desc" id="stat-top-cat-time">0h 0m logged</span>
+                        </div>
+                    </div>
+                    <div class="card glass stat-mini-card">
+                        <div class="stat-icon icon-orange">📱</div>
+                        <div class="stat-info">
+                            <span class="stat-title">Phone Screen Time</span>
+                            <span class="stat-number" id="stat-phone-time">0h 0m</span>
+                            <span class="stat-desc">iOS screentime log</span>
+                        </div>
+                    </div>
+                    <div class="card glass stat-mini-card">
+                        <div class="stat-icon icon-emerald">🏆</div>
+                        <div class="stat-info">
+                            <span class="stat-title">Productivity Score</span>
+                            <span class="stat-number" id="stat-productivity-score">0</span>
+                            <span class="stat-desc">Based on app category profile</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Centerpiece: Visual Timeline -->
+            <section class="timeline-section">
+                <div class="card glass timeline-card">
+                    <div class="card-header">
+                        <div class="header-left">
+                            <span class="card-dot dot-cyan"></span>
+                            <h3>ACTIVITY TIMELINE</h3>
+                        </div>
+                        <div class="header-right">
+                            <span class="timeline-legend-item"><span class="legend-box" style="background: #a78bfa;"></span> Dev</span>
+                            <span class="timeline-legend-item"><span class="legend-box" style="background: #34d399;"></span> Work</span>
+                            <span class="timeline-legend-item"><span class="legend-box" style="background: #22d3ee;"></span> Browsing</span>
+                            <span class="timeline-legend-item"><span class="legend-box" style="background: #f43f5e;"></span> Design</span>
+                            <span class="timeline-legend-item"><span class="legend-box" style="background: #fbbf24;"></span> Social</span>
+                            <span class="timeline-legend-item"><span class="legend-box" style="background: #64748b;"></span> System</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 24 Hour Timeline visualization (Scrollable & Zoomable) -->
+                    <div class="timeline-visual-wrapper" id="timeline-wrapper">
+                        <div class="timeline-scroll-canvas" id="timeline-canvas">
+                            <!-- Drag Selection Overlay -->
+                            <div class="timeline-selection-overlay" id="selection-overlay"></div>
+                            <!-- Hour markers overlay -->
+                            <div class="hour-markers" id="timeline-hours">
+                                <!-- Populated by JS: 00:00 to 23:00 -->
+                            </div>
+                            <!-- Computer Use Lane -->
+                            <div class="timeline-lane-wrapper" id="lane-desktop">
+                                <div class="timeline-lane-label">Computer</div>
+                                <div class="timeline-bars-container" id="timeline-bars">
+                                    <!-- Desktop event blocks will render here -->
+                                </div>
+                            </div>
+                            <!-- Phone Use Lane -->
+                            <div class="timeline-lane-wrapper" id="lane-phone">
+                                <div class="timeline-lane-label">Phone</div>
+                                <div class="timeline-bars-container" id="timeline-bars-phone">
+                                    <!-- Phone event blocks will render here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Active event hovering detail panel -->
+                    <div class="timeline-inspect-panel" id="timeline-inspector">
+                        <div class="inspect-placeholder">
+                            <span class="inspect-pulse"></span> Hover over any segment on the timeline to inspect active window and application details
+                        </div>
+                        <div class="inspect-details" id="inspector-content" style="display: none;">
+                            <div class="inspect-row">
+                                <div class="inspect-col">
+                                    <span class="inspect-meta-label">TIME INTERVAL</span>
+                                    <span class="inspect-value" id="inspect-time">14:15 - 14:32</span>
+                                </div>
+                                <div class="inspect-col">
+                                    <span class="inspect-meta-label">APPLICATION</span>
+                                    <span class="inspect-value tag-app" id="inspect-app">Google Chrome</span>
+                                </div>
+                                <div class="inspect-col">
+                                    <span class="inspect-meta-label">CATEGORY</span>
+                                    <span class="inspect-value tag-cat" id="inspect-category" style="color: #22d3ee;">Browsing</span>
+                                </div>
+                                <div class="inspect-col">
+                                    <span class="inspect-meta-label">DURATION</span>
+                                    <span class="inspect-value" id="inspect-duration">17m 12s</span>
+                                </div>
+                            </div>
+                            <div class="inspect-title-row">
+                                <span class="inspect-meta-label">WINDOW TITLE / WEBSITE</span>
+                                <span class="inspect-window-title" id="inspect-title">Submitting commit requests - GitHub</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Bottom Grid: Left = Categories & Apps, Right = Websites -->
+            <section class="analytics-grid">
+                <!-- Left: Category Spans + Top Apps -->
+                <div class="analytics-column">
+                    <!-- Category Card -->
+                    <div class="card glass category-card">
+                        <div class="card-header">
+                            <span class="card-dot dot-purple"></span>
+                            <h3>CATEGORIES DISTRIBUTION</h3>
+                        </div>
+                        <div class="category-bars-list" id="category-distribution-list">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Top Apps Card -->
+                    <div class="card glass apps-card">
+                        <div class="card-header">
+                            <span class="card-dot dot-green"></span>
+                            <h3>MOST USED APPLICATIONS</h3>
+                        </div>
+                        <div class="top-list" id="top-apps-list">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Web History (if available) -->
+                <div class="analytics-column">
+                    <div class="card glass web-card">
+                        <div class="card-header">
+                            <span class="card-dot dot-orange"></span>
+                            <h3>TOP WEB DOMAINS</h3>
+                        </div>
+                        <div class="top-list" id="top-web-list">
+                            <!-- Populated by JS -->
+                        </div>
+                        <div class="web-fallback-note" id="web-data-warning" style="display: none;">
+                            💡 No browser tab tracker data is available for this day. Showing fallback window focus history instead.
+                        </div>
+                    </div>
+
+                    <!-- Top iOS Apps Card -->
+                    <div class="card glass apps-card">
+                        <div class="card-header">
+                            <span class="card-dot dot-purple"></span>
+                            <h3>MOST USED IOS APPS</h3>
+                        </div>
+                        <div class="top-list" id="top-ios-apps-list">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <!-- Log Details Modal -->
+        <dialog id="details-modal" class="modal glass">
+            <div class="modal-content">
+                <header class="modal-header">
+                    <div class="modal-header-left">
+                        <span class="modal-dot dot-cyan"></span>
+                        <h3 id="modal-title">LOG EVENT DETAILS</h3>
+                    </div>
+                    <button id="modal-close" class="modal-close-btn" aria-label="Close modal">&times;</button>
+                </header>
+                <div class="modal-sub-bar">
+                    <span id="modal-stats-summary">0 entries found</span>
+                </div>
+                <div class="modal-body" id="modal-body">
+                    <!-- Chronological log list populated by JS -->
+                </div>
+            </div>
+        </dialog>
+
+        <!-- Loading State Overlay -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="spinner-container">
+                <div class="aura-spinner"></div>
+                <div class="spinner-logo">Aglinskas</div>
+                <div class="spinner-status">Syncing ActivityWatch data...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
