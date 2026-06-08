@@ -135,7 +135,7 @@ def pull_activity_watch_data():
             return False
 
 def pull_iphone_data():
-    aw_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "aw-import-screentime"))
+    aw_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "aw-import-screentime"))
     if not os.path.exists(aw_dir):
         print(f"Error: Directory {aw_dir} does not exist.")
         return False

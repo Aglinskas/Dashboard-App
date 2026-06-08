@@ -19,3 +19,5 @@ Data/*.json
 Data/*.csv
 Data/data_timeline/
 Data/old/
+aw-import-screentime/*.json
+aw-import-screentime/*.csv
