@@ -54,6 +54,14 @@ daily_summary = {} # date -> stats
 daily_details = {} # date -> details (timeline, top apps, etc.)
 latest_date = None
 
+# Helper to determine if an app is a web browser
+def is_browser_app(app_name):
+    if not app_name:
+        return False
+    app_lower = app_name.lower()
+    browsers = ["dia", "chrome", "safari", "firefox", "arc", "brave", "opera", "edge", "browser"]
+    return any(b in app_lower for b in browsers)
+
 # Helper to determine category
 def get_category(app, url, title):
     app_lower = app.lower() if app else ""
@@ -65,6 +73,10 @@ def get_category(app, url, title):
         for pattern in conf["urls"]:
             if pattern in url_lower or pattern in title_lower:
                 return cat_name
+                
+    # If a URL is present and we are in a browser app, default to Browsing / Research
+    if url and is_browser_app(app):
+        return "Browsing / Research"
                 
     # Check Apps
     for cat_name, conf in CATEGORIES.items():
@@ -190,7 +202,7 @@ def split_aw_csv():
         try:
             dt_utc = parse_iso(ts_str)
             dt_local = dt_utc.astimezone(local_tz)
-            date_folder = dt_local.strftime("%Y-%b-%d").upper()
+            date_folder = dt_local.strftime("%Y-%m-%d")
             
             if date_folder not in grouped_rows:
                 grouped_rows[date_folder] = []
@@ -202,14 +214,11 @@ def split_aw_csv():
         day_dir = os.path.join(timeline_dir, date_folder)
         os.makedirs(day_dir, exist_ok=True)
         
-        out_path1 = os.path.join(day_dir, f"{date_folder}-acitivty_watch_data.csv")
-        out_path2 = os.path.join(day_dir, f"{date_folder}-activity_watch_data.csv")
-        
-        for out_path in [out_path1, out_path2]:
-            with open(out_path, "w", encoding="utf-8", newline="") as f_out:
-                writer = csv.DictWriter(f_out, fieldnames=headers)
-                writer.writeheader()
-                writer.writerows(day_rows)
+        out_path = os.path.join(day_dir, f"{date_folder}-activity_watch_data.csv")
+        with open(out_path, "w", encoding="utf-8", newline="") as f_out:
+            writer = csv.DictWriter(f_out, fieldnames=headers)
+            writer.writeheader()
+            writer.writerows(day_rows)
                 
     print(f"Successfully split ActivityWatch CSV into {len(grouped_rows)} days.")
 
@@ -239,7 +248,7 @@ def split_iphone_csv():
         try:
             dt_utc = parse_iso(ts_str)
             dt_local = dt_utc.astimezone(local_tz)
-            date_folder = dt_local.strftime("%Y-%b-%d").upper()
+            date_folder = dt_local.strftime("%Y-%m-%d")
             
             if date_folder not in grouped_rows:
                 grouped_rows[date_folder] = []
@@ -364,9 +373,13 @@ def load_and_process_data():
     # Sort folders chronologically
     def parse_folder_name(name):
         try:
-            return datetime.strptime(name, "%Y-%b-%d")
+            return datetime.strptime(name, "%Y-%m-%d")
         except ValueError:
-            return datetime.min
+            try:
+                # Fallback support for existing YYYY-MMM-DD folders
+                return datetime.strptime(name.upper(), "%Y-%b-%d")
+            except ValueError:
+                return datetime.min
             
     day_folders.sort(key=lambda x: parse_folder_name(x[0]))
     
@@ -374,19 +387,22 @@ def load_and_process_data():
     
     for folder_name, folder_path in day_folders:
         try:
-            dt = datetime.strptime(folder_name, "%Y-%b-%d")
+            dt = datetime.strptime(folder_name, "%Y-%m-%d")
             date_str = dt.strftime("%Y-%m-%d")
         except ValueError:
-            print(f"Skipping folder with invalid format: {folder_name}")
-            continue
+            try:
+                # Fallback support for existing YYYY-MMM-DD folders
+                dt = datetime.strptime(folder_name.upper(), "%Y-%b-%d")
+                date_str = dt.strftime("%Y-%m-%d")
+            except ValueError:
+                print(f"Skipping folder with invalid format: {folder_name}")
+                continue
             
         print(f"Processing day: {folder_name} ({date_str})...")
         
         # Load ActivityWatch CSV for this day
         aw_events = []
-        aw_csv_path1 = os.path.join(folder_path, f"{folder_name}-acitivty_watch_data.csv")
-        aw_csv_path2 = os.path.join(folder_path, f"{folder_name}-activity_watch_data.csv")
-        aw_csv_path = aw_csv_path1 if os.path.exists(aw_csv_path1) else aw_csv_path2
+        aw_csv_path = os.path.join(folder_path, f"{folder_name}-activity_watch_data.csv")
         
         if os.path.exists(aw_csv_path):
             import csv
@@ -404,8 +420,9 @@ def load_and_process_data():
                         "data": data_dict
                     })
                     
-        # Group by host and bucket type, just like in original code
+        # Group by host and bucket type, and collect web tab events globally for this day
         hosts = {}
+        global_web_events = []
         for e in aw_events:
             hostname = e.get("bucket_hostname", "unknown")
             if hostname not in hosts:
@@ -423,13 +440,16 @@ def load_and_process_data():
                 hosts[hostname]["window"].append(event_obj)
             elif btype == "web.tab.current":
                 hosts[hostname]["web"].append(event_obj)
+                global_web_events.append(event_obj)
                 
         # Now run the same intersection algorithm for this day's hosts
         timeline_events = []
         for host, data_store in hosts.items():
             afk_events = sorted(data_store["afk"], key=lambda x: x["timestamp"])
             window_events = sorted(data_store["window"], key=lambda x: x["timestamp"])
-            web_events = sorted(data_store["web"], key=lambda x: x["timestamp"])
+            # Use global web events to match browser tabs, as browser watcher hostnames 
+            # may differ from window watcher hostnames (e.g. MacBook Air vs Pro)
+            web_events = sorted(global_web_events, key=lambda x: x["timestamp"])
             
             # Pre-parse AFK events into local time active spans
             not_afk_spans = []
@@ -479,23 +499,24 @@ def load_and_process_data():
                 if overlap_start < overlap_end:
                     overlap_dur = (overlap_end - overlap_start).total_seconds()
                     if overlap_dur > 0.5:
+                        app = w_data.get("app", "Unknown")
+                        title = w_data.get("title", "")
                         url = ""
                         web_title = ""
                         
-                        while web_idx < len(parsed_web) and parsed_web[web_idx][1] <= overlap_start:
-                            web_idx += 1
-                            
-                        k = web_idx
-                        while k < len(parsed_web) and parsed_web[k][0] < overlap_end:
-                            wb_start, wb_end, wb_data = parsed_web[k]
-                            if max(overlap_start, wb_start) < min(overlap_end, wb_end):
-                                url = wb_data.get("url", "")
-                                web_title = wb_data.get("title", "")
-                                break
-                            k += 1
-                            
-                        app = w_data.get("app", "Unknown")
-                        title = w_data.get("title", "")
+                        if is_browser_app(app):
+                            while web_idx < len(parsed_web) and parsed_web[web_idx][1] <= overlap_start:
+                                web_idx += 1
+                                
+                            k = web_idx
+                            while k < len(parsed_web) and parsed_web[k][0] < overlap_end:
+                                wb_start, wb_end, wb_data = parsed_web[k]
+                                if max(overlap_start, wb_start) < min(overlap_end, wb_end):
+                                    url = wb_data.get("url", "")
+                                    web_title = wb_data.get("title", "")
+                                    break
+                                k += 1
+                                
                         cat = get_category(app, url, title or web_title)
                         
                         timeline_events.append({
@@ -612,7 +633,14 @@ def load_and_process_data():
             if e["url"]:
                 dom = clean_domain(e["url"])
                 if dom:
+                    # 1. Accumulate root URL duration
                     domain_durations[dom] = domain_durations.get(dom, 0.0) + e["duration"]
+                    
+                    # 2. Accumulate individual page duration (root URL: window title)
+                    title = e.get("title") or e.get("web_title") or ""
+                    if title:
+                        page_key = f"{dom}: {title}"
+                        domain_durations[page_key] = domain_durations.get(page_key, 0.0) + e["duration"]
                     
         top_domains = sorted(
             [{"domain": k, "seconds": v} for k, v in domain_durations.items()],
@@ -667,6 +695,12 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         public_dir = os.path.join(os.path.dirname(__file__), 'public')
         relative_path = path_str.lstrip('/')
         return os.path.join(public_dir, relative_path)
+        
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+        super().end_headers()
         
     def do_GET(self):
         parsed_url = urlparse(self.path)
@@ -726,6 +760,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             refresh_iphone = options.get("iphone", True)
             
             results = refresh_data_pipeline(refresh_computer, refresh_iphone)
+            load_and_process_data()
             
             self.send_response(200)
             self.send_header("Content-Type", "application/json")

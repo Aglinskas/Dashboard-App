@@ -63,7 +63,7 @@ graph TD
 ### Ingest & Pre-processing
 *   **Ingestion**: Desktop activity is fetched from ActivityWatch's local API (`http://localhost:5600`). iPhone data is pulled via the `aw-import-screentime` sync command.
 *   **Conversion**: Script files `convert_AW_to_csv.py` and `convert_iphone_to_csv.py` translate these JSON exports into raw CSV tables.
-*   **Daily Sharding**: The CSV files are split chronologically into directory shards under `Data/data_timeline/[YEAR-MONTH-DAY]/` (e.g. `2026-JUN-08`).
+*   **Daily Sharding**: The CSV files are split chronologically into directory shards under `Data/data_timeline/[YEAR-MONTH-DAY]/` (e.g. `2026-06-08`).
 
 ### Core Timeline Intersection Algorithm (Desktop)
 To ensure idle/AFK states are accounted for, `server.py` implements a two-pointer sweep algorithm to find active windows:

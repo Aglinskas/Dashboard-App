@@ -245,13 +245,20 @@ function renderTimeline(desktopEvents, iphoneEvents, dateStr) {
                 inspectDuration.textContent = formatDuration(e.duration);
                 
                 // Window title or web tab title/URL
-                let displayTitle = e.title;
-                if (e.web_title) {
-                    displayTitle = `${e.web_title} (${e.url})`;
-                } else if (e.url) {
-                    displayTitle = e.url;
+                let displayTitle = "";
+                const rootUrl = e.url ? cleanUrl(e.url) : "";
+                
+                if (rootUrl) {
+                    const titleText = e.title || e.web_title;
+                    if (titleText) {
+                        displayTitle = `${rootUrl}: ${titleText}`;
+                    } else {
+                        displayTitle = e.url;
+                    }
+                } else {
+                    displayTitle = e.title || e.web_title || "(No Window Title Logged)";
                 }
-                inspectTitle.textContent = displayTitle || "(No Window Title Logged)";
+                inspectTitle.textContent = displayTitle;
             });
             
             block.addEventListener('mouseleave', () => {
@@ -523,12 +530,27 @@ function openDetailsModal(name, isFallback) {
     modalTitle.textContent = isFallback ? `Window Title Log Details` : `Domain Log Details`;
     
     // Filter matching events
+    const hasColon = !isFallback && name.includes(': ');
+    let filterDomain = name;
+    let filterTitle = null;
+    if (hasColon) {
+        const parts = name.split(': ');
+        filterDomain = parts[0];
+        filterTitle = parts.slice(1).join(': ');
+    }
+
     const timeline = currentDayDetails.timeline || [];
     const matchedEvents = timeline.filter(e => {
         if (isFallback) {
             return e.title === name;
         } else {
-            return e.url && cleanUrl(e.url) === name;
+            if (!e.url) return false;
+            const eventDomain = cleanUrl(e.url);
+            if (filterTitle) {
+                return eventDomain === filterDomain && (e.title === filterTitle || e.web_title === filterTitle);
+            } else {
+                return eventDomain === filterDomain;
+            }
         }
     });
     
@@ -575,9 +597,12 @@ function openDetailsModal(name, isFallback) {
                     </div>
                 `;
             } else {
+                const rootUrl = e.url ? cleanUrl(e.url) : "";
+                const titleText = e.web_title || e.title || "";
+                const displayTitle = (rootUrl && titleText) ? `${rootUrl}: ${titleText}` : (titleText || e.url || '(No page title)');
                 contentHTML = `
                     <div class="timeline-card-content">
-                        <div class="timeline-web-title">${e.web_title || e.title || '(No page title)'}</div>
+                        <div class="timeline-web-title">${displayTitle}</div>
                         <a href="${e.url}" target="_blank" rel="noopener noreferrer" class="timeline-url-link" title="Open page in new tab">
                             ${e.url}
                         </a>
