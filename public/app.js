@@ -42,23 +42,50 @@ function formatMonthDay(dateStr) {
     return `${months[d.getMonth()]} ${d.getDate()}`;
 }
 
+// Heuristic weights based on keywords in category names
+function getCategoryWeight(name) {
+    const n = name.toLowerCase();
+    
+    // Coding / Development
+    if (n.includes('dev') || n.includes('code') || n.includes('coding') || n.includes('program') || n.includes('tech')) {
+        return 1.0;
+    }
+    // Design / Media creation
+    if (n.includes('design') || n.includes('media') || n.includes('photo') || n.includes('video') || n.includes('art') || n.includes('figma') || n.includes('creative')) {
+        return 0.9;
+    }
+    // Core Work / Office / Writing
+    if (n.includes('work') || n.includes('write') || n.includes('writing') || n.includes('office') || n.includes('docs') || n.includes('school') || n.includes('study') || n.includes('admin')) {
+        return 0.8;
+    }
+    // Research / Browsing
+    if (n.includes('browse') || n.includes('browsing') || n.includes('research') || n.includes('search') || n.includes('read') || n.includes('news')) {
+        return 0.6;
+    }
+    // System maintenance / Idle / Utility
+    if (n.includes('system') || n.includes('idle') || n.includes('utility') || n.includes('tool') || n.includes('settings')) {
+        return 0.4;
+    }
+    // Social / Entertainment / Slacking
+    if (n.includes('social') || n.includes('entertainment') || n.includes('play') || n.includes('game') || n.includes('youtube') || n.includes('music') || n.includes('chat') || n.includes('fun') || n.includes('slack')) {
+        return 0.15;
+    }
+    
+    // Default weight for uncategorized or custom unmatched categories
+    if (n === 'uncategorized') {
+        return 0.5;
+    }
+    return 0.6; // neutral-positive fallback
+}
+
 // Calculate Productivity Score (0 - 100)
 function calculateProductivityScore(categories) {
-    const weights = {
-        "Coding / Dev": 1.0,
-        "Design / Media": 0.9,
-        "Work / Writing / Office": 0.8,
-        "Browsing / Research": 0.6,
-        "System / Idle": 0.4,
-        "Entertainment / Social": 0.15
-    };
-    
     let totalSec = 0;
     let weightedSec = 0;
     
     for (const [cat, data] of Object.entries(categories)) {
         const sec = data.seconds;
-        const weight = weights[cat] || 0.5;
+        const weight = getCategoryWeight(cat);
         totalSec += sec;
         weightedSec += (sec * weight);
     }
@@ -392,6 +419,13 @@ function populateCategoryExpansion(row, name, color) {
                 <span class="sub-item-name" title="${app}">${app}</span>
                 <span class="sub-item-time">${formatDuration(sec)}</span>
             `;
+            
+            const cleanName = app.substring(2).trim();
+            const type = app.startsWith('💻') ? 'apps' : 'ios_apps';
+            item.addEventListener('click', () => {
+                openClassifyModal(cleanName, type);
+            });
+            
             panel.appendChild(item);
         });
     }
@@ -411,6 +445,11 @@ function populateCategoryExpansion(row, name, color) {
                 <span class="sub-item-name" title="${domain}">🌐 ${domain}</span>
                 <span class="sub-item-time">${formatDuration(sec)}</span>
             `;
+            
+            item.addEventListener('click', () => {
+                openClassifyModal(domain, 'domains');
+            });
+            
             panel.appendChild(item);
         });
     }
@@ -447,6 +486,10 @@ function renderTopApps(topApps, maxAppSeconds) {
                 <span class="item-time">${formatDuration(item.seconds)}</span>
             </div>
         `;
+        
+        listItem.addEventListener('click', () => {
+            openClassifyModal(item.app, 'apps');
+        });
         
         container.appendChild(listItem);
         
@@ -489,6 +532,10 @@ function renderTopIosApps(topIosApps, maxAppSeconds) {
                 <span class="item-time">${formatDuration(item.seconds)}</span>
             </div>
         `;
+        
+        listItem.addEventListener('click', () => {
+            openClassifyModal(item.app, 'ios_apps');
+        });
         
         container.appendChild(listItem);
         
@@ -647,23 +694,24 @@ function renderTopWeb(topDomains, timelineEvents, totalSeconds) {
             const barPercent = maxWebSec > 0 ? (item.seconds / maxWebSec) * 100 : 0;
             const listItem = document.createElement('div');
             listItem.className = 'list-item';
+            const itemColor = item.color || 'var(--clr-browsing)';
             
             listItem.innerHTML = `
                 <div class="item-left">
                     <span class="item-rank">#${index + 1}</span>
-                    <span class="item-color-indicator" style="background: var(--clr-browsing); box-shadow: 0 0 6px var(--clr-browsing)"></span>
+                    <span class="item-color-indicator" style="background: ${itemColor}; box-shadow: 0 0 6px ${itemColor}"></span>
                     <span class="item-name" title="${item.domain}">${item.domain}</span>
                 </div>
                 <div class="item-right">
                     <div class="item-bar-mini">
-                        <div class="item-bar-fill" style="background: var(--clr-browsing); width: 0%"></div>
+                        <div class="item-bar-fill" style="background: ${itemColor}; width: 0%"></div>
                     </div>
                     <span class="item-time">${formatDuration(item.seconds)}</span>
                 </div>
             `;
             
             listItem.addEventListener('click', () => {
-                openDetailsModal(item.domain, false);
+                openClassifyModal(item.domain, 'domains');
             });
             
             container.appendChild(listItem);
@@ -675,18 +723,41 @@ function renderTopWeb(topDomains, timelineEvents, totalSeconds) {
         // Fallback: If no browser tab info exists (e.g. later days), show top active window titles
         warning.style.display = 'block';
         
-        // Process window titles: group by window title and count durations
-        const titleDurations = {};
+        // Process window titles: group by window title and count durations, tracking categories
+        const titleData = {};
         timelineEvents.forEach(e => {
             const t = e.title || "(Untitled Window)";
             // Ignore blank or utility system app window titles to make fallback interesting
             if (t && e.app !== 'loginwindow' && e.app !== 'Finder' && e.app !== 'UserNotificationCenter') {
-                titleDurations[t] = (titleDurations[t] || 0.0) + e.duration;
+                if (!titleData[t]) {
+                    titleData[t] = { seconds: 0.0, cat_seconds: {} };
+                }
+                titleData[t].seconds += e.duration;
+                const cat = e.category || 'Uncategorized';
+                titleData[t].cat_seconds[cat] = (titleData[t].cat_seconds[cat] || 0.0) + e.duration;
             }
         });
         
-        const sortedTitles = sortedEntries = Object.entries(titleDurations)
-            .sort((a, b) => b[1] - a[1])
+        const sortedTitles = Object.entries(titleData)
+            .map(([title, data]) => {
+                // Find category with max duration
+                let bestCat = 'Uncategorized';
+                let bestSec = -1;
+                for (const [cat, sec] of Object.entries(data.cat_seconds)) {
+                    if (sec > bestSec) {
+                        bestSec = sec;
+                        bestCat = cat;
+                    }
+                }
+                const color = categoryMeta[bestCat] || '#64748b';
+                return {
+                    title: title,
+                    seconds: data.seconds,
+                    category: bestCat,
+                    color: color
+                };
+            })
+            .sort((a, b) => b.seconds - a.seconds)
             .slice(0, 10);
             
         if (sortedTitles.length === 0) {
@@ -694,29 +765,30 @@ function renderTopWeb(topDomains, timelineEvents, totalSeconds) {
             return;
         }
         
-        const scaleMax = sortedTitles[0][1];
+        const scaleMax = sortedTitles[0].seconds;
         
-        sortedTitles.forEach(([title, seconds], index) => {
-            const barPercent = scaleMax > 0 ? (seconds / scaleMax) * 100 : 0;
+        sortedTitles.forEach((item, index) => {
+            const barPercent = scaleMax > 0 ? (item.seconds / scaleMax) * 100 : 0;
             const listItem = document.createElement('div');
             listItem.className = 'list-item';
+            const itemColor = item.color || 'var(--clr-work)';
             
             listItem.innerHTML = `
                 <div class="item-left">
                     <span class="item-rank">#${index + 1}</span>
-                    <span class="item-color-indicator" style="background: var(--clr-work); box-shadow: 0 0 6px var(--clr-work)"></span>
-                    <span class="item-name" title="${title}">${title}</span>
+                    <span class="item-color-indicator" style="background: ${itemColor}; box-shadow: 0 0 6px ${itemColor}"></span>
+                    <span class="item-name" title="${item.title}">${item.title}</span>
                 </div>
                 <div class="item-right">
                     <div class="item-bar-mini">
-                        <div class="item-bar-fill" style="background: var(--clr-work); width: 0%"></div>
+                        <div class="item-bar-fill" style="background: ${itemColor}; width: 0%"></div>
                     </div>
-                    <span class="item-time">${formatDuration(seconds)}</span>
+                    <span class="item-time">${formatDuration(item.seconds)}</span>
                 </div>
             `;
             
             listItem.addEventListener('click', () => {
-                openDetailsModal(title, true);
+                openClassifyModal(item.title, 'window_titles');
             });
             
             container.appendChild(listItem);
@@ -771,6 +843,7 @@ function loadDashboardSummary() {
         .then(data => {
             summaryData = data;
             categoryMeta = data.categories_meta;
+            renderTimelineLegend();
             
             // Set active day to latest day with data
             const latest = data.latest_date;
@@ -790,9 +863,543 @@ function loadDashboardSummary() {
         });
 }
 
+// Quick Classify Modal Logic
+function openClassifyModal(itemName, itemType) {
+    loadCategoriesConfig().then(() => {
+        const tempConfig = JSON.parse(JSON.stringify(originalCategoriesConfig));
+        
+        const nameVal = document.getElementById('classify-item-name');
+        const typeVal = document.getElementById('classify-item-type');
+        const currentVal = document.getElementById('classify-item-current');
+        
+        if (!nameVal || !typeVal || !currentVal) return;
+        
+        nameVal.textContent = itemName;
+        typeVal.textContent = formatTypeLabel(itemType);
+        
+        const currentCat = findItemCategory(itemName, itemType, tempConfig);
+        currentVal.textContent = currentCat;
+        currentVal.style.color = categoryMeta[currentCat] || '#64748b';
+        
+        const grid = document.getElementById('classify-options-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+        
+        for (const [catName, config] of Object.entries(tempConfig)) {
+            const btn = document.createElement('button');
+            btn.className = 'classify-btn';
+            if (catName === currentCat) {
+                btn.classList.add('active-cat');
+            }
+            btn.style.color = config.color || '#64748b';
+            btn.innerHTML = `
+                <span class="cat-color-dot" style="background: ${config.color || '#64748b'}"></span>
+                <span>${catName}</span>
+            `;
+            
+            btn.addEventListener('click', () => {
+                saveItemCategory(itemName, itemType, currentCat, catName, tempConfig);
+            });
+            
+            grid.appendChild(btn);
+        }
+        
+        const uncBtn = document.createElement('button');
+        uncBtn.className = 'classify-btn';
+        if (currentCat === 'Uncategorized') {
+            uncBtn.classList.add('active-cat');
+        }
+        const uncColor = '#64748b';
+        uncBtn.style.color = uncColor;
+        uncBtn.innerHTML = `
+            <span class="cat-color-dot" style="background: ${uncColor}"></span>
+            <span>Uncategorized</span>
+        `;
+        uncBtn.addEventListener('click', () => {
+            saveItemCategory(itemName, itemType, currentCat, 'Uncategorized', tempConfig);
+        });
+        grid.appendChild(uncBtn);
+        
+        // Add View Details button if item is a web domain or window title
+        const existingDetailsBtn = document.getElementById('classify-view-details-btn');
+        if (existingDetailsBtn) {
+            existingDetailsBtn.remove();
+        }
+        
+        if (itemType === 'domains' || itemType === 'window_titles') {
+            const detailsBtn = document.createElement('button');
+            detailsBtn.id = 'classify-view-details-btn';
+            detailsBtn.className = 'btn-secondary';
+            detailsBtn.style.cssText = 'width: 100%; margin-top: 16px; font-family: var(--font-heading); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;';
+            detailsBtn.textContent = 'View Log Details';
+            detailsBtn.addEventListener('click', () => {
+                const modal = document.getElementById('classify-modal');
+                if (modal) modal.close();
+                openDetailsModal(itemName, itemType === 'window_titles');
+            });
+            
+            // Append after the options grid
+            const modalBody = document.querySelector('#classify-modal .modal-body');
+            if (modalBody) modalBody.appendChild(detailsBtn);
+        }
+        
+        const modal = document.getElementById('classify-modal');
+        if (modal) modal.showModal();
+    });
+}
+
+function formatTypeLabel(type) {
+    switch(type) {
+        case 'apps': return 'Desktop App';
+        case 'ios_apps': return 'iOS App';
+        case 'domains': return 'Web Domain';
+        case 'window_titles': return 'Window Title';
+        default: return type;
+    }
+}
+
+function findItemCategory(itemName, itemType, config) {
+    for (const [catName, cConf] of Object.entries(config)) {
+        const rules = cConf[itemType] || [];
+        if (rules.some(r => r.toLowerCase() === itemName.toLowerCase())) {
+            return catName;
+        }
+    }
+    return "Uncategorized";
+}
+
+function saveItemCategory(itemName, itemType, oldCat, newCat, config) {
+    // Remove from all matching rules of this type to avoid double classification
+    for (const [cName, cConf] of Object.entries(config)) {
+        if (cConf[itemType]) {
+            cConf[itemType] = cConf[itemType].filter(r => r.toLowerCase() !== itemName.toLowerCase());
+        }
+    }
+    
+    // Add to new category rules
+    if (newCat && newCat !== 'Uncategorized') {
+        if (!config[newCat][itemType]) {
+            config[newCat][itemType] = [];
+        }
+        config[newCat][itemType].push(itemName);
+    }
+    
+    document.getElementById('loading-overlay').style.opacity = '1';
+    document.getElementById('loading-overlay').style.pointerEvents = 'auto';
+    document.querySelector('.spinner-status').textContent = 'Applying category changes...';
+    
+    const classifyModal = document.getElementById('classify-modal');
+    if (classifyModal) classifyModal.close();
+    
+    fetch('/api/categories', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(config)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            loadDashboardSummary();
+        } else {
+            alert("Failed to save categories: " + data.message);
+            document.getElementById('loading-overlay').style.opacity = '0';
+            document.getElementById('loading-overlay').style.pointerEvents = 'none';
+        }
+    })
+    .catch(err => {
+        console.error("Error saving categories:", err);
+        alert("Error saving categories. Please check server.");
+        document.getElementById('loading-overlay').style.opacity = '0';
+        document.getElementById('loading-overlay').style.pointerEvents = 'none';
+    });
+}
+
+// Category Builder client-side state and logic
+let categoriesConfig = {};
+let originalCategoriesConfig = {};
+let activeConfigCategory = null;
+const presetColors = ["#a78bfa", "#34d399", "#22d3ee", "#f43f5e", "#fbbf24", "#64748b", "#38bdf8", "#ec4899", "#f97316"];
+
+function loadCategoriesConfig() {
+    return fetch('/api/categories')
+        .then(res => res.json())
+        .then(data => {
+            originalCategoriesConfig = data;
+        })
+        .catch(err => {
+            console.error("Error fetching categories:", err);
+        });
+}
+
+function renderTimelineLegend() {
+    const legendContainer = document.querySelector('.timeline-card .card-header .header-right');
+    if (!legendContainer) return;
+    
+    legendContainer.innerHTML = '';
+    
+    // Render custom categories
+    for (const [name, color] of Object.entries(categoryMeta)) {
+        if (name === "Uncategorized") continue;
+        const item = document.createElement('span');
+        item.className = 'timeline-legend-item';
+        item.innerHTML = `<span class="legend-box" style="background: ${color};"></span> ${name}`;
+        legendContainer.appendChild(item);
+    }
+    
+    // Explicitly add Uncategorized at the end
+    const uncColor = categoryMeta["Uncategorized"] || "#64748b";
+    const item = document.createElement('span');
+    item.className = 'timeline-legend-item';
+    item.innerHTML = `<span class="legend-box" style="background: ${uncColor};"></span> Uncategorized`;
+    legendContainer.appendChild(item);
+}
+
+// Render categories list sidebar in modal
+function renderModalCategoryList() {
+    const listContainer = document.getElementById('modal-categories-list');
+    if (!listContainer) return;
+    listContainer.innerHTML = '';
+    
+    for (const [name, config] of Object.entries(categoriesConfig)) {
+        const item = document.createElement('div');
+        item.className = `category-item ${activeConfigCategory === name ? 'active' : ''}`;
+        
+        const dotColor = config.color || '#64748b';
+        
+        item.innerHTML = `
+            <div class="cat-item-left">
+                <span class="cat-color-dot" style="background: ${dotColor};"></span>
+                <span class="cat-item-name" title="${name}">${name}</span>
+            </div>
+        `;
+        
+        item.addEventListener('click', () => {
+            selectModalCategory(name);
+        });
+        
+        listContainer.appendChild(item);
+    }
+}
+
+// Select a category to display/edit inside modal
+function selectModalCategory(name) {
+    activeConfigCategory = name;
+    renderModalCategoryList();
+    
+    const detailPane = document.getElementById('category-detail-pane');
+    const emptyState = document.getElementById('category-empty-state');
+    
+    if (!detailPane || !emptyState) return;
+    
+    if (!name || !categoriesConfig[name]) {
+        detailPane.style.display = 'none';
+        emptyState.style.display = 'flex';
+        return;
+    }
+    
+    detailPane.style.display = 'flex';
+    emptyState.style.display = 'none';
+    
+    const config = categoriesConfig[name];
+    
+    // Populate Name input
+    const nameInput = document.getElementById('cat-name-input');
+    nameInput.value = name;
+    
+    // Populate Color inputs
+    const colorInput = document.getElementById('cat-color-input');
+    colorInput.value = config.color || '#64748b';
+    
+    // Preset colors palette
+    const presetContainer = document.getElementById('color-preset-palette');
+    presetContainer.innerHTML = '';
+    presetColors.forEach(color => {
+        const circle = document.createElement('div');
+        circle.className = `color-preset-circle ${config.color === color ? 'selected' : ''}`;
+        circle.style.backgroundColor = color;
+        circle.style.color = color;
+        circle.addEventListener('click', () => {
+            colorInput.value = color;
+            config.color = color;
+            selectPresetColor(circle, color);
+        });
+        presetContainer.appendChild(circle);
+    });
+    
+    // Handle custom color selection
+    colorInput.oninput = (e) => {
+        config.color = e.target.value;
+        document.querySelectorAll('.color-preset-circle').forEach(c => c.classList.remove('selected'));
+        // Update active dot color in sidebar directly
+        const activeItem = document.querySelector('.category-item.active .cat-color-dot');
+        if (activeItem) {
+            activeItem.style.backgroundColor = e.target.value;
+        }
+    };
+    
+    // Focus rename logic
+    nameInput.oninput = (e) => {
+        const typedName = e.target.value.trim();
+        const activeLabel = document.querySelector('.category-item.active .cat-item-name');
+        if (activeLabel && typedName) {
+            activeLabel.textContent = typedName;
+            activeLabel.title = typedName;
+        }
+    };
+    
+    nameInput.onchange = (e) => {
+        const newName = e.target.value.trim();
+        if (newName && newName !== activeConfigCategory) {
+            if (categoriesConfig[newName]) {
+                alert("A category with this name already exists.");
+                nameInput.value = activeConfigCategory;
+                const activeLabel = document.querySelector('.category-item.active .cat-item-name');
+                if (activeLabel) activeLabel.textContent = activeConfigCategory;
+                return;
+            }
+            
+            const oldConfig = categoriesConfig[activeConfigCategory];
+            delete categoriesConfig[activeConfigCategory];
+            categoriesConfig[newName] = oldConfig;
+            activeConfigCategory = newName;
+            
+            renderModalCategoryList();
+        }
+    };
+    
+    // Populate tag lists
+    renderRuleTags('apps', config.apps || []);
+    renderRuleTags('ios-apps', config.ios_apps || []);
+    renderRuleTags('window-titles', config.window_titles || []);
+    renderRuleTags('domains', config.domains || []);
+}
+
+function selectPresetColor(selectedCircle, color) {
+    document.querySelectorAll('.color-preset-circle').forEach(circle => {
+        circle.classList.remove('selected');
+    });
+    selectedCircle.classList.add('selected');
+    
+    const activeItem = document.querySelector('.category-item.active .cat-color-dot');
+    if (activeItem) {
+        activeItem.style.backgroundColor = color;
+    }
+}
+
+function renderRuleTags(type, list) {
+    const listContainer = document.getElementById(`tags-${type}`);
+    const countLabel = document.getElementById(`count-${type}`);
+    if (!listContainer || !countLabel) return;
+    
+    listContainer.innerHTML = '';
+    countLabel.textContent = `${list.length} rule${list.length !== 1 ? 's' : ''}`;
+    
+    list.forEach((rule, index) => {
+        const pill = document.createElement('div');
+        pill.className = 'tag-pill';
+        pill.innerHTML = `
+            <span>${rule}</span>
+            <span class="tag-pill-remove" data-index="${index}">&times;</span>
+        `;
+        
+        pill.querySelector('.tag-pill-remove').addEventListener('click', (e) => {
+            const idx = parseInt(e.target.getAttribute('data-index'));
+            list.splice(idx, 1);
+            renderRuleTags(type, list);
+        });
+        
+        listContainer.appendChild(pill);
+    });
+    
+    const input = document.getElementById(`input-${type}`);
+    input.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const val = input.value.trim();
+            if (val && !list.includes(val)) {
+                list.push(val);
+                input.value = '';
+                renderRuleTags(type, list);
+            }
+        }
+    };
+}
+
+function handleAddCategory() {
+    let count = 1;
+    let newName = "New Category";
+    while (categoriesConfig[newName]) {
+        newName = `New Category ${count}`;
+        count++;
+    }
+    
+    categoriesConfig[newName] = {
+        apps: [],
+        ios_apps: [],
+        window_titles: [],
+        domains: [],
+        color: presetColors[Math.floor(Math.random() * presetColors.length)]
+    };
+    
+    activeConfigCategory = newName;
+    renderModalCategoryList();
+    selectModalCategory(newName);
+    
+    const nameInput = document.getElementById('cat-name-input');
+    if (nameInput) {
+        nameInput.focus();
+        nameInput.select();
+    }
+}
+
+function handleDeleteCategory() {
+    if (!activeConfigCategory) return;
+    
+    if (confirm(`Are you sure you want to delete the category "${activeConfigCategory}"?`)) {
+        delete categoriesConfig[activeConfigCategory];
+        activeConfigCategory = null;
+        renderModalCategoryList();
+        selectModalCategory(null);
+    }
+}
+
+function handleSaveCategories() {
+    const cleanConfig = {};
+    for (const [name, config] of Object.entries(categoriesConfig)) {
+        const trimmedName = name.trim();
+        if (trimmedName) {
+            cleanConfig[trimmedName] = {
+                apps: config.apps || [],
+                ios_apps: config.ios_apps || [],
+                window_titles: config.window_titles || [],
+                domains: config.domains || [],
+                color: config.color || '#64748b'
+            };
+        }
+    }
+    
+    document.getElementById('loading-overlay').style.opacity = '1';
+    document.getElementById('loading-overlay').style.pointerEvents = 'auto';
+    document.querySelector('.spinner-status').textContent = 'Applying category changes...';
+    
+    const categoriesModal = document.getElementById('categories-modal');
+    categoriesModal.close();
+    
+    fetch('/api/categories', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(cleanConfig)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            loadDashboardSummary();
+        } else {
+            alert("Failed to save categories: " + data.message);
+            document.getElementById('loading-overlay').style.opacity = '0';
+            document.getElementById('loading-overlay').style.pointerEvents = 'none';
+        }
+    })
+    .catch(err => {
+        console.error("Error saving categories:", err);
+        alert("Error saving categories. Please check server.");
+        document.getElementById('loading-overlay').style.opacity = '0';
+        document.getElementById('loading-overlay').style.pointerEvents = 'none';
+    });
+}
+
 // Start
 document.addEventListener('DOMContentLoaded', () => {
     loadDashboardSummary();
+    loadCategoriesConfig();
+    
+    // Categories Modal bindings
+    const manageCategoriesBtn = document.getElementById('manage-categories-btn');
+    if (manageCategoriesBtn) {
+        manageCategoriesBtn.addEventListener('click', () => {
+            loadCategoriesConfig().then(() => {
+                categoriesConfig = JSON.parse(JSON.stringify(originalCategoriesConfig));
+                activeConfigCategory = null;
+                renderModalCategoryList();
+                selectModalCategory(null);
+                const modal = document.getElementById('categories-modal');
+                if (modal) modal.showModal();
+            });
+        });
+    }
+    
+    const categoriesModal = document.getElementById('categories-modal');
+    const categoriesModalClose = document.getElementById('categories-modal-close');
+    const categoriesCancelBtn = document.getElementById('categories-cancel-btn');
+    
+    if (categoriesModal) {
+        if (categoriesModalClose) {
+            categoriesModalClose.addEventListener('click', () => {
+                categoriesModal.close();
+            });
+        }
+        if (categoriesCancelBtn) {
+            categoriesCancelBtn.addEventListener('click', () => {
+                categoriesModal.close();
+            });
+        }
+        
+        categoriesModal.addEventListener('click', (e) => {
+            const rect = categoriesModal.getBoundingClientRect();
+            const isInModal = (
+                e.clientX >= rect.left &&
+                e.clientX <= rect.right &&
+                e.clientY >= rect.top &&
+                e.clientY <= rect.bottom
+            );
+            if (!isInModal) {
+                categoriesModal.close();
+            }
+        });
+    }
+    
+    const classifyModal = document.getElementById('classify-modal');
+    const classifyModalClose = document.getElementById('classify-modal-close');
+    
+    if (classifyModal) {
+        if (classifyModalClose) {
+            classifyModalClose.addEventListener('click', () => {
+                classifyModal.close();
+            });
+        }
+        
+        classifyModal.addEventListener('click', (e) => {
+            const rect = classifyModal.getBoundingClientRect();
+            const isInModal = (
+                e.clientX >= rect.left &&
+                e.clientX <= rect.right &&
+                e.clientY >= rect.top &&
+                e.clientY <= rect.bottom
+            );
+            if (!isInModal) {
+                classifyModal.close();
+            }
+        });
+    }
+    
+    const addCatBtn = document.getElementById('add-category-btn');
+    if (addCatBtn) {
+        addCatBtn.addEventListener('click', handleAddCategory);
+    }
+    
+    const delCatBtn = document.getElementById('delete-category-btn');
+    if (delCatBtn) {
+        delCatBtn.addEventListener('click', handleDeleteCategory);
+    }
+    
+    const saveCatBtn = document.getElementById('categories-save-btn');
+    if (saveCatBtn) {
+        saveCatBtn.addEventListener('click', handleSaveCategories);
+    }
     
     // Refresh Data Toggle Dropdown & Progress handler
     const refreshBtn = document.getElementById('refresh-btn');

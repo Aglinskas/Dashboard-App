@@ -22,6 +22,12 @@
             </div>
             <div class="header-right">
                 <div class="current-date-display" id="active-date-title">June 5, 2026</div>
+                <div class="categories-btn-container">
+                    <button id="manage-categories-btn" class="categories-button-new">
+                        <span class="categories-icon">⚙️</span>
+                        <span class="categories-text">Manage Categories</span>
+                    </button>
+                </div>
                 <div class="capture-container">
                     <button id="capture-btn" class="capture-button-new">
                         <span class="capture-icon">📸</span>
@@ -287,6 +293,150 @@
                 </div>
             </div>
         </dialog>
+        
+        <!-- Categories Management Modal -->
+        <dialog id="categories-modal" class="modal glass">
+            <div class="modal-content categories-modal-content">
+                <header class="modal-header">
+                    <div class="modal-header-left">
+                        <span class="modal-dot dot-purple"></span>
+                        <h3>MANAGE CATEGORIES</h3>
+                    </div>
+                    <button id="categories-modal-close" class="modal-close-btn" aria-label="Close modal">&times;</button>
+                </header>
+                
+                <div class="categories-layout">
+                    <!-- Sidebar listing categories -->
+                    <aside class="categories-sidebar">
+                        <div class="categories-list" id="modal-categories-list">
+                            <!-- Populated dynamically -->
+                        </div>
+                        <button id="add-category-btn" class="add-category-button">
+                            <span class="add-icon">+</span> Add Category
+                        </button>
+                    </aside>
+                    
+                    <!-- Detail Pane for the active category -->
+                    <main class="category-detail-pane" id="category-detail-pane" style="display: none;">
+                        <div class="detail-header">
+                            <div class="detail-field">
+                                <label for="cat-name-input">Category Name</label>
+                                <input type="text" id="cat-name-input" placeholder="e.g. Learning">
+                            </div>
+                            
+                            <div class="detail-field">
+                                <label>Category Color</label>
+                                <div class="color-picker-container">
+                                    <div class="color-preset-palette" id="color-preset-palette">
+                                        <!-- Presets rendered dynamically -->
+                                    </div>
+                                    <input type="color" id="cat-color-input" class="custom-color-picker">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="rules-container">
+                            <h4>Matching Rules</h4>
+                            <p class="rules-desc">Add words or patterns. Activities containing these patterns will match this category.</p>
+                            
+                            <div class="rule-section">
+                                <div class="rule-section-header">
+                                    <h5>Desktop Applications</h5>
+                                    <span class="rule-count" id="count-apps">0 rules</span>
+                                </div>
+                                <div class="tag-input-wrapper">
+                                    <div class="tag-list" id="tags-apps"></div>
+                                    <input type="text" id="input-apps" class="rule-tag-input" placeholder="Type app name and press Enter...">
+                                </div>
+                            </div>
+                            
+                            <div class="rule-section">
+                                <div class="rule-section-header">
+                                    <h5>iOS Applications</h5>
+                                    <span class="rule-count" id="count-ios-apps">0 rules</span>
+                                </div>
+                                <div class="tag-input-wrapper">
+                                    <div class="tag-list" id="tags-ios-apps"></div>
+                                    <input type="text" id="input-ios-apps" class="rule-tag-input" placeholder="Type iOS app name and press Enter...">
+                                </div>
+                            </div>
+                            
+                            <div class="rule-section">
+                                <div class="rule-section-header">
+                                    <h5>Window Titles</h5>
+                                    <span class="rule-count" id="count-window-titles">0 rules</span>
+                                </div>
+                                <div class="tag-input-wrapper">
+                                    <div class="tag-list" id="tags-window-titles"></div>
+                                    <input type="text" id="input-window-titles" class="rule-tag-input" placeholder="Type window title pattern and press Enter...">
+                                </div>
+                            </div>
+                            
+                            <div class="rule-section">
+                                <div class="rule-section-header">
+                                    <h5>Web Domains</h5>
+                                    <span class="rule-count" id="count-domains">0 rules</span>
+                                </div>
+                                <div class="tag-input-wrapper">
+                                    <div class="tag-list" id="tags-domains"></div>
+                                    <input type="text" id="input-domains" class="rule-tag-input" placeholder="e.g. github.com, stackoverflow.com...">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="category-pane-footer">
+                            <button id="delete-category-btn" class="delete-category-button">Delete Category</button>
+                        </div>
+                    </main>
+                    
+                    <!-- Empty selection state -->
+                    <div class="category-empty-state" id="category-empty-state">
+                        <div class="empty-state-icon">📂</div>
+                        <p>Select a category from the list to edit its matching rules, or create a new category.</p>
+                    </div>
+                </div>
+                
+                <footer class="categories-modal-footer">
+                    <button id="categories-cancel-btn" class="btn-secondary">Cancel</button>
+                    <button id="categories-save-btn" class="btn-primary">Save & Apply Changes</button>
+                </footer>
+            </div>
+        </dialog>
+
+        <!-- Quick Classify Modal -->
+        <dialog id="classify-modal" class="modal glass">
+            <div class="modal-content">
+                <header class="modal-header">
+                    <div class="modal-header-left">
+                        <span class="modal-dot dot-purple"></span>
+                        <h3 id="classify-modal-title">CLASSIFY ITEM</h3>
+                    </div>
+                    <button id="classify-modal-close" class="modal-close-btn" aria-label="Close modal">&times;</button>
+                </header>
+                <div class="modal-body">
+                    <div class="classify-item-info">
+                        <div class="classify-info-row">
+                            <span class="classify-info-label">Item:</span>
+                            <span class="classify-info-val" id="classify-item-name">-</span>
+                        </div>
+                        <div class="classify-info-row">
+                            <span class="classify-info-label">Type:</span>
+                            <span class="classify-info-val" id="classify-item-type">-</span>
+                        </div>
+                        <div class="classify-info-row">
+                            <span class="classify-info-label">Current:</span>
+                            <span class="classify-info-val" id="classify-item-current">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="classify-options-header">Select New Category</div>
+                    <div class="classify-options-grid" id="classify-options-grid">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+        </dialog>
+
 
         <!-- Loading State Overlay -->
         <div class="loading-overlay" id="loading-overlay">

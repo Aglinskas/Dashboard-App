@@ -848,6 +848,7 @@ body {
     border-radius: 8px;
     transition: var(--transition-smooth);
     border: 1px solid transparent;
+    cursor: pointer;
 }
 
 .list-item:hover {
@@ -1060,6 +1061,7 @@ body {
     margin-bottom: 2px;
     border-radius: 0 4px 4px 0;
     transition: var(--transition-smooth);
+    cursor: pointer;
 }
 
 .sub-list-item:hover {
@@ -1591,4 +1593,559 @@ dialog.modal[open]::backdrop {
 .day-activity-fill[style*="width: 0%"],
 .day-activity-fill[style*="width: 0px"] {
     display: none !important;
+}
+
+/* ==========================================
+   CATEGORY BUILDER STYLES
+   ========================================== */
+
+/* Header Manage Categories Button */
+.categories-btn-container {
+    position: relative;
+    display: inline-block;
+}
+
+.categories-button-new {
+    cursor: pointer;
+    font-family: inherit;
+    outline: none;
+    transition: var(--transition-smooth);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(167, 139, 250, 0.06);
+    border: 1px solid rgba(167, 139, 250, 0.15);
+    padding: 6px 12px;
+    border-radius: 30px;
+}
+
+.categories-icon {
+    font-size: 0.8rem;
+    line-height: 1;
+}
+
+.categories-text {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--clr-dev);
+}
+
+.categories-button-new:hover {
+    background: rgba(167, 139, 250, 0.12);
+    border-color: rgba(167, 139, 250, 0.3);
+    box-shadow: 0 0 10px rgba(167, 139, 250, 0.15);
+}
+
+.categories-button-new:active {
+    transform: scale(0.98);
+}
+
+/* Wide dialog for Categories Builder */
+dialog.modal#categories-modal {
+    max-width: 920px;
+    width: 95%;
+    max-height: 85vh;
+}
+
+.categories-modal-content {
+    display: flex;
+    flex-direction: column;
+    height: 85vh;
+}
+
+.categories-layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    height: calc(85vh - 120px); /* Adjust to leave space for header and footer */
+}
+
+/* Sidebar styling */
+.categories-sidebar {
+    width: 240px;
+    border-right: 1px solid var(--border-color);
+    background: rgba(6, 6, 9, 0.3);
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    gap: 16px;
+    flex-shrink: 0;
+}
+
+.categories-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.category-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid transparent;
+    transition: var(--transition-smooth);
+}
+
+.category-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.category-item.active {
+    background: rgba(167, 139, 250, 0.08);
+    border-color: rgba(167, 139, 250, 0.25);
+    box-shadow: 0 0 12px rgba(167, 139, 250, 0.05);
+}
+
+.cat-item-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cat-color-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.cat-item-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 140px;
+}
+
+.cat-item-built-in {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-style: italic;
+}
+
+.add-category-button {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    color: var(--text-primary);
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.8rem;
+    transition: var(--transition-smooth);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.add-category-button:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Detail Pane styling */
+.category-detail-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    overflow-y: auto;
+    gap: 20px;
+}
+
+.detail-header {
+    display: grid;
+    grid-template-columns: 2fr 1.5fr;
+    gap: 20px;
+    align-items: flex-end;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.detail-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.detail-field label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+}
+
+.detail-field input[type="text"] {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    transition: var(--transition-smooth);
+}
+
+.detail-field input[type="text"]:focus {
+    border-color: rgba(167, 139, 250, 0.4);
+    box-shadow: 0 0 10px rgba(167, 139, 250, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    outline: none;
+}
+
+/* Color picker elements */
+.color-picker-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.color-preset-palette {
+    display: flex;
+    gap: 6px;
+}
+
+.color-preset-circle {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: var(--transition-smooth);
+}
+
+.color-preset-circle:hover {
+    transform: scale(1.15);
+}
+
+.color-preset-circle.selected {
+    border-color: #fff;
+    box-shadow: 0 0 8px rgba(255,255,255,0.4);
+}
+
+.custom-color-picker {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 28px;
+    height: 28px;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.custom-color-picker::-webkit-color-swatch {
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.custom-color-picker::-moz-color-swatch {
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Rules Section */
+.rules-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.rules-container h4 {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.rules-desc {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: -8px;
+}
+
+.rule-section {
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.rule-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.rule-section-header h5 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.rule-count {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+/* Tag Lists and pill inputs */
+.tag-input-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: 24px;
+}
+
+.tag-pill {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: var(--transition-smooth);
+}
+
+.tag-pill:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.tag-pill-remove {
+    cursor: pointer;
+    font-size: 0.8rem;
+    line-height: 1;
+    color: var(--text-muted);
+    transition: var(--transition-smooth);
+}
+
+.tag-pill-remove:hover {
+    color: var(--clr-design);
+}
+
+.rule-tag-input {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.8rem;
+    transition: var(--transition-smooth);
+}
+
+.rule-tag-input:focus {
+    border-color: rgba(167, 139, 250, 0.3);
+    outline: none;
+}
+
+/* Delete Category action */
+.category-pane-footer {
+    margin-top: 10px;
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.delete-category-button {
+    background: transparent;
+    border: 1px solid rgba(244, 63, 94, 0.3);
+    color: var(--clr-design);
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: var(--transition-smooth);
+}
+
+.delete-category-button:hover {
+    background: rgba(244, 63, 94, 0.08);
+    border-color: var(--clr-design);
+    box-shadow: 0 0 10px rgba(244, 63, 94, 0.15);
+}
+
+/* Empty selection state */
+.category-empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.empty-state-icon {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+.category-empty-state p {
+    font-size: 0.85rem;
+    max-width: 280px;
+    line-height: 1.5;
+}
+
+/* Modal Action Footer */
+.categories-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border-color);
+    background: rgba(10, 10, 18, 0.4);
+    flex-shrink: 0;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--clr-dev), var(--clr-browsing));
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    box-shadow: 0 4px 12px rgba(167, 139, 250, 0.2);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(167, 139, 250, 0.35);
+    filter: brightness(1.05);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+}
+
+/* Quick Classify Modal Styles */
+dialog.modal#classify-modal {
+    max-width: 480px;
+    width: 90%;
+    max-height: 70vh;
+}
+
+.classify-item-info {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.classify-info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.82rem;
+}
+
+.classify-info-label {
+    color: var(--text-muted);
+}
+
+.classify-info-val {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.classify-options-header {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-top: 14px;
+    margin-bottom: 4px;
+}
+
+.classify-options-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.classify-btn {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px 14px;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: var(--transition-smooth);
+}
+
+.classify-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.classify-btn.active-cat {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: currentColor;
+    box-shadow: 0 0 10px currentColor;
+}
+
+.classify-btn .cat-color-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
 }

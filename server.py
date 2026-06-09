@@ -15,39 +15,85 @@ DATA_FILE = os.path.join(os.path.dirname(__file__), 'Data', 'export.json')
 IPHONE_DATA_FILE = os.path.join(os.path.dirname(__file__), 'Data', 'iphone_screentime_7d.json')
 TIMELINE_DIR = os.path.join(os.path.dirname(__file__), 'Data', 'data_timeline')
 
-# Categories config with colors and mapping keywords
-CATEGORIES = {
-    "Coding / Dev": {
+# Default categories definition with simplified names and rule lists
+DEFAULT_CATEGORIES = {
+    "Dev": {
         "apps": ["terminal", "iterm", "vs code", "visual studio code", "xcode", "sublime text", "macvim", "dia", "jupyterlab", "cursor", "openai", "chatgpt"],
-        "urls": ["github.com", "stackoverflow.com", "localhost:5600", "localhost:5679", "w3schools.com", "developer.apple.com"],
-        "color": "#a78bfa" # Violet
+        "ios_apps": [],
+        "window_titles": ["localhost:5600", "localhost:5679"],
+        "domains": ["github.com", "stackoverflow.com", "w3schools.com", "developer.apple.com"],
+        "color": "#a78bfa"
     },
-    "Work / Writing / Office": {
+    "Work": {
         "apps": ["microsoft excel", "excel", "microsoft powerpoint", "powerpoint", "microsoft word", "word", "keynote", "numbers", "pages", "preview", "acrobat", "slack", "teams", "microsoft teams", "zoom", "zoom.us", "finder", "gmail", "notes", "translate", "messages", "mobiletimer", "wallet", "incallservice"],
-        "urls": ["docs.google.com", "drive.google.com", "meet.google.com", "basecamp.com", "3.basecamp.com", "gssc.lt", "nature.com", "jneurosci.org"],
-        "color": "#34d399" # Emerald
+        "ios_apps": ["mobiletimer", "wallet", "messages", "notes"],
+        "window_titles": [],
+        "domains": ["docs.google.com", "drive.google.com", "meet.google.com", "basecamp.com", "3.basecamp.com", "gssc.lt", "nature.com", "jneurosci.org"],
+        "color": "#34d399"
     },
-    "Browsing / Research": {
+    "Browsing": {
         "apps": ["google chrome", "chrome", "safari", "firefox", "arc", "brave", "mobilesafari"],
-        "urls": [],
-        "color": "#22d3ee" # Cyan
+        "ios_apps": ["mobilesafari"],
+        "window_titles": [],
+        "domains": [],
+        "color": "#22d3ee"
     },
-    "Design / Media": {
+    "Design": {
         "apps": ["figma", "photoshop", "illustrator", "dia", "inkscape", "canva", "premiere", "camera", "photos", "slideshow", "mobileslideshow"],
-        "urls": ["figma.com"],
-        "color": "#f43f5e" # Rose
+        "ios_apps": ["camera", "photos", "mobileslideshow"],
+        "window_titles": [],
+        "domains": ["figma.com"],
+        "color": "#f43f5e"
     },
-    "Entertainment / Social": {
+    "Social": {
         "apps": ["spotify", "music", "netflix", "youtube", "facebook", "linkedin", "twitter", "x", "whatsapp", "reddit", "strava", "podcasts", "tiktok", "instagram", "messenger"],
-        "urls": ["youtube.com", "facebook.com", "linkedin.com", "twitter.com", "x.com", "instagram.com", "reddit.com", "strava.com"],
-        "color": "#fbbf24" # Amber
+        "ios_apps": ["spotify", "music", "netflix", "youtube", "facebook", "linkedin", "twitter", "x", "whatsapp", "reddit", "strava", "podcasts", "tiktok", "instagram", "messenger"],
+        "window_titles": [],
+        "domains": ["youtube.com", "facebook.com", "linkedin.com", "twitter.com", "x.com", "instagram.com", "reddit.com", "strava.com"],
+        "color": "#fbbf24"
     },
-    "System / Idle": {
+    "System": {
         "apps": ["loginwindow", "usernotificationcenter", "dock", "system settings", "system preferences", "preferences", "springboard", "lockscreen", "clockangel", "control-center", "headphone", "sleeplockscreen"],
-        "urls": [],
-        "color": "#64748b" # Slate
+        "ios_apps": ["springboard", "lockscreen", "clockangel", "control-center", "sleeplockscreen"],
+        "window_titles": [],
+        "domains": [],
+        "color": "#64748b"
     }
 }
+
+CATEGORIES = {}
+CATEGORIES_FILE = os.path.join(os.path.dirname(__file__), 'Data', 'categories.json')
+
+def load_categories():
+    global CATEGORIES
+    if os.path.exists(CATEGORIES_FILE):
+        try:
+            with open(CATEGORIES_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if isinstance(data, dict) and data:
+                    CATEGORIES.clear()
+                    CATEGORIES.update(data)
+                    print(f"Loaded {len(CATEGORIES)} categories from {CATEGORIES_FILE}")
+                    return
+        except Exception as e:
+            print(f"Error loading categories from {CATEGORIES_FILE}: {e}")
+            
+    # Default/bootstrap initial setup
+    CATEGORIES.clear()
+    CATEGORIES.update(DEFAULT_CATEGORIES)
+    save_categories()
+
+def save_categories():
+    try:
+        os.makedirs(os.path.dirname(CATEGORIES_FILE), exist_ok=True)
+        with open(CATEGORIES_FILE, 'w', encoding='utf-8') as f:
+            json.dump(CATEGORIES, f, indent=4)
+        print(f"Saved categories to {CATEGORIES_FILE}")
+    except Exception as e:
+        print(f"Error saving categories: {e}")
+
+# Initial loading on startup
+load_categories()
 
 # In-memory storage for processed data
 daily_summary = {} # date -> stats
@@ -62,33 +108,59 @@ def is_browser_app(app_name):
     browsers = ["dia", "chrome", "safari", "firefox", "arc", "brave", "opera", "edge", "browser"]
     return any(b in app_lower for b in browsers)
 
-# Helper to determine category
-def get_category(app, url, title):
+# Helper to determine category based on rule lists
+def get_category(app, url, title, is_iphone=False):
     app_lower = app.lower() if app else ""
     url_lower = url.lower() if url else ""
     title_lower = title.lower() if title else ""
     
-    # Check URLs first for web browsing categories
-    for cat_name, conf in CATEGORIES.items():
-        for pattern in conf["urls"]:
-            if pattern in url_lower or pattern in title_lower:
-                return cat_name
-                
-    # If a URL is present and we are in a browser app, default to Browsing / Research
-    if url and is_browser_app(app):
-        return "Browsing / Research"
-                
-    # Check Apps
-    for cat_name, conf in CATEGORIES.items():
-        for app_name in conf["apps"]:
-            if app_name in app_lower:
-                return cat_name
-                
-    # Fallback default web browsing check
-    if "chrome" in app_lower or "safari" in app_lower or "firefox" in app_lower:
-        return "Browsing / Research"
+    # 1. iPhone specific logic: check ios_apps, fall back to apps
+    if is_iphone:
+        for cat_name, conf in CATEGORIES.items():
+            ios_apps = conf.get("ios_apps", [])
+            for pattern in ios_apps:
+                if pattern.lower() in app_lower:
+                    return cat_name
+        for cat_name, conf in CATEGORIES.items():
+            apps = conf.get("apps", [])
+            for pattern in apps:
+                if pattern.lower() in app_lower:
+                    return cat_name
+        return "Uncategorized"
         
-    return "Browsing / Research" if (url or "http" in title_lower) else "Work / Writing / Office"
+    # 2. Desktop check logic order:
+    # A. Domains/URLs check
+    if url_lower:
+        for cat_name, conf in CATEGORIES.items():
+            domains = conf.get("domains", [])
+            for pattern in domains:
+                pattern_lower = pattern.lower()
+                if ": " in pattern_lower:
+                    parts = pattern_lower.split(": ", 1)
+                    pat_dom, pat_title = parts[0], parts[1]
+                    if pat_dom in url_lower and pat_title in title_lower:
+                        return cat_name
+                else:
+                    if pattern_lower in url_lower:
+                        return cat_name
+                    
+    # B. Window titles check
+    if title_lower:
+        for cat_name, conf in CATEGORIES.items():
+            window_titles = conf.get("window_titles", [])
+            for pattern in window_titles:
+                if pattern.lower() in title_lower:
+                    return cat_name
+                    
+    # C. Apps check
+    if app_lower:
+        for cat_name, conf in CATEGORIES.items():
+            apps = conf.get("apps", [])
+            for pattern in apps:
+                if pattern.lower() in app_lower:
+                    return cat_name
+                    
+    return "Uncategorized"
 
 # Parse ISO timestamp
 def parse_iso(ts_str):
@@ -561,7 +633,7 @@ def load_and_process_data():
                         parts = app_id.split('.')
                         app_title = parts[-1] if parts else app_id
                         
-                    cat = get_category(app_title, "", app_title)
+                    cat = get_category(app_title, "", app_title, is_iphone=True)
                     
                     iphone_timeline_events.append({
                         "start": ts_local.isoformat(),
@@ -585,7 +657,8 @@ def load_and_process_data():
         # Combined Category totals
         cat_totals = {}
         for cat_name, conf in CATEGORIES.items():
-            cat_totals[cat_name] = {"seconds": 0.0, "color": conf["color"]}
+            cat_totals[cat_name] = {"seconds": 0.0, "color": conf.get("color", "#64748b")}
+        cat_totals["Uncategorized"] = {"seconds": 0.0, "color": "#64748b"}
             
         for e in timeline_events:
             cat = e["category"]
@@ -628,22 +701,48 @@ def load_and_process_data():
         )[:10]
         
         # Top Domains (Desktop Web)
-        domain_durations = {}
+        domain_data = {} # key -> {"seconds": float, "cat_seconds": {cat: float}}
         for e in timeline_events:
             if e["url"]:
                 dom = clean_domain(e["url"])
                 if dom:
-                    # 1. Accumulate root URL duration
-                    domain_durations[dom] = domain_durations.get(dom, 0.0) + e["duration"]
+                    cat = e["category"]
+                    dur = e["duration"]
                     
-                    # 2. Accumulate individual page duration (root URL: window title)
+                    # 1. Accumulate root URL
+                    if dom not in domain_data:
+                        domain_data[dom] = {"seconds": 0.0, "cat_seconds": {}}
+                    domain_data[dom]["seconds"] += dur
+                    domain_data[dom]["cat_seconds"][cat] = domain_data[dom]["cat_seconds"].get(cat, 0.0) + dur
+                    
+                    # 2. Accumulate individual page duration
                     title = e.get("title") or e.get("web_title") or ""
                     if title:
                         page_key = f"{dom}: {title}"
-                        domain_durations[page_key] = domain_durations.get(page_key, 0.0) + e["duration"]
-                    
+                        if page_key not in domain_data:
+                            domain_data[page_key] = {"seconds": 0.0, "cat_seconds": {}}
+                        domain_data[page_key]["seconds"] += dur
+                        domain_data[page_key]["cat_seconds"][cat] = domain_data[page_key]["cat_seconds"].get(cat, 0.0) + dur
+                        
+        top_domains = []
+        for k, v in domain_data.items():
+            # Find the category with maximum duration
+            best_cat = "Uncategorized"
+            best_sec = -1.0
+            for cat, sec in v["cat_seconds"].items():
+                if sec > best_sec:
+                    best_sec = sec
+                    best_cat = cat
+            color = CATEGORIES.get(best_cat, {}).get("color", "#64748b")
+            top_domains.append({
+                "domain": k,
+                "seconds": v["seconds"],
+                "category": best_cat,
+                "color": color
+            })
+            
         top_domains = sorted(
-            [{"domain": k, "seconds": v} for k, v in domain_durations.items()],
+            top_domains,
             key=lambda x: x["seconds"],
             reverse=True
         )[:10]
@@ -705,17 +804,30 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed_url = urlparse(self.path)
         
+        # API: Get Categories config
+        if parsed_url.path == "/api/categories":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps(CATEGORIES).encode("utf-8"))
+            return
+            
         # API: Get Summary list of all days
-        if parsed_url.path == "/api/summary":
+        elif parsed_url.path == "/api/summary":
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             
+            categories_meta = {k: v.get("color", "#64748b") for k, v in CATEGORIES.items()}
+            if "Uncategorized" not in categories_meta:
+                categories_meta["Uncategorized"] = "#64748b"
+                
             response_data = {
                 "days": daily_summary,
                 "latest_date": latest_date,
-                "categories_meta": {k: v["color"] for k, v in CATEGORIES.items()}
+                "categories_meta": categories_meta
             }
             self.wfile.write(json.dumps(response_data).encode("utf-8"))
             return
@@ -745,7 +857,38 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         parsed_url = urlparse(self.path)
-        if parsed_url.path == "/api/refresh":
+        
+        if parsed_url.path == "/api/categories":
+            print("Received API save categories request...")
+            try:
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length) if content_length > 0 else b'{}'
+                new_categories = json.loads(post_data.decode('utf-8'))
+                
+                global CATEGORIES
+                CATEGORIES.clear()
+                CATEGORIES.update(new_categories)
+                save_categories()
+                
+                # Instantly reprocess historical data
+                load_and_process_data()
+                
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success"}).encode("utf-8"))
+                return
+            except Exception as e:
+                print(f"Error saving categories: {e}")
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode("utf-8"))
+                return
+                
+        elif parsed_url.path == "/api/refresh":
             print("Received API data refresh request...")
             
             # Read POST body
